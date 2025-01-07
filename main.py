@@ -48,13 +48,13 @@ async def new_chat_member(update: types.ChatJoinRequest):
     
 
 # Handle /start and text messages
-@router.message(F.text)
-async def handle_messages(message: types.Message):
-    await message.answer(
-        text=tabrik_text,
-        reply_markup=keyboard,
-        parse_mode='HTML'
-    )
+# @router.message(F.text)
+# async def handle_messages(message: types.Message):
+#     await message.answer(
+#         text=tabrik_text,
+#         reply_markup=keyboard,
+#         parse_mode='HTML'
+#     )
 
 async def main():
     # Include the router
