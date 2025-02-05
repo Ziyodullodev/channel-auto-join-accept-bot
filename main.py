@@ -1,66 +1,67 @@
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatMemberUpdated
-# from aiogram.filters import 
+from aiogram.filters import CommandStart
 from aiogram.enums import ChatMemberStatus
+from texts import *
 from aiogram import Router
 import logging
 from dotenv import load_dotenv
-import os
+from functions import add_user, users_stat
+import os, json
 import asyncio
 
-# Load environment variables
 load_dotenv()
 API_TOKEN = os.getenv('BOT_TOKEN')
-
-
-tabrik_text = """Tabriklaymiz!
-Siz <b>Maqsadli Inson Club</b>ga azo bo'ldingiz! 🎉
-Endi clubda ajoyib imkoniyatlar va yangiliklarni kuzatib boring.
-Darxol clubga qo'shilib o'ling va muvaffaqiyat sari birgalikda qadam qo'ying! 💪
-<a href="https://t.me/Maqsadli_inson2025">Qo'shilish uchun tugma</a>"""
-
-
-# Initialize bot and dispatcher
+ADMIN_ID = os.getenv('ADMIN_ID')
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 router = Router()
 
-# Logging setup
-logging.basicConfig(level=logging.INFO)
-
-# Inline buttons
-keyboard = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text='Maqsadli inson', url='https://t.me/maqsadli_inson2025')],
-    [InlineKeyboardButton(text='Davron Turdiyev zapislar', url='https://t.me/DTurdiyev_marafons')],
-])
-
-# Handle new chat member requests
+@router.message(CommandStart())
+async def start_dispatcher(message: types.Message):
+    first_name = message.from_user.first_name
+    chat_id = message.chat.id
+    await message.answer(
+        text=start_text.format(first_name=first_name),
+        parse_mode='HTML'
+    )
+    await add_user(message)
+    
+    
 @router.chat_join_request()
 async def new_chat_member(update: types.ChatJoinRequest):
-    # print(update)
     await update.approve()
-    # send message to from user
-    # await bot.send_message(
-    #     chat_id=update.from_user.id,
-    #     text="Salom! Reklama xabari:",
-    #     reply_markup=keyboard
-    # )
+    try:
+        await bot.send_message(
+            chat_id=update.from_user.id,
+            text=default_accept_text,
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        pass
     
+    await add_user(update)
 
-# Handle /start and text messages
-# @router.message(F.text)
-# async def handle_messages(message: types.Message):
-#     await message.answer(
-#         text=tabrik_text,
-#         reply_markup=keyboard,
-#         parse_mode='HTML'
-#     )
+@router.message(F.text)
+async def handle_messages(message: types.Message):
+    chat_id = message.chat.id
+    if chat_id < 0:
+        return
+    text = message.text
+    if text == '/stat' and str(message.from_user.id) == ADMIN_ID:
+        statistic = await users_stat()
+        return await message.answer(statistic_text.format(statistic=statistic), parse_mode='HTML')
+    elif text == '/load' and str(message.from_user.id) == ADMIN_ID:
+        try:
+            file = types.FSInputFile("users.json")
+            await message.answer_document(file)
+        except Exception as e:
+            await message.answer(str(e))
+        return
+    return await message.answer(about_text, parse_mode='HTML')
 
 async def main():
-    # Include the router
     dp.include_router(router)
-
-    # Start polling
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
